@@ -1,0 +1,77 @@
+<?xml version='1.0' encoding='utf-8'?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/terms/" xmlns:opds="http://opds-spec.org/2010/catalog">
+  <title>calibre Library</title>
+  <subtitle>Books in your library</subtitle>
+  <author>
+    <name>calibre</name>
+    <uri>https://calibre-ebook.com</uri>
+  </author>
+  <id>urn:calibre:main</id>
+  <icon>/favicon.png</icon>
+  <updated>2026-03-22T20:13:42+00:00</updated>
+  <link type="application/atom+xml" rel="search" title="Search" href="/opds/search/{searchTerms}?library_id=Calibre_Library"/>
+  <link type="application/atom+xml;type=feed;profile=opds-catalog" rel="start" href="/opds?library_id=Calibre_Library"/>
+  <entry>
+    <title>By Newest</title>
+    <id>calibre-navcatalog:1599abe0ad72203aab3103107a0d78c16c41d412</id>
+    <updated>2026-03-22T20:13:42+00:00</updated>
+    <content type="text">Books sorted by Date</content>
+    <link type="application/atom+xml;type=feed;profile=opds-catalog" href="/opds/navcatalog/4f6e6577657374?library_id=Calibre_Library"/>
+  </entry>
+  <entry>
+    <title>By Title</title>
+    <id>calibre-navcatalog:fc140badc241705c08c4adffaeb680c3103b90fb</id>
+    <updated>2026-03-22T20:13:42+00:00</updated>
+    <content type="text">Books sorted by Title</content>
+    <link type="application/atom+xml;type=feed;profile=opds-catalog" href="/opds/navcatalog/4f7469746c65?library_id=Calibre_Library"/>
+  </entry>
+  <entry>
+    <title>By Authors</title>
+    <id>calibre-navcatalog:e0bc21ffc62881d91f58e6ae2a87ecb17de74b4a</id>
+    <updated>2026-03-22T20:13:42+00:00</updated>
+    <content type="text">Books sorted by Authors</content>
+    <link type="application/atom+xml;type=feed;profile=opds-catalog" href="/opds/navcatalog/4e617574686f7273?library_id=Calibre_Library"/>
+  </entry>
+  <entry>
+    <title>By Languages</title>
+    <id>calibre-navcatalog:d46d3c299b96b4b84e339878ad75adfc86b9245d</id>
+    <updated>2026-03-22T20:13:42+00:00</updated>
+    <content type="text">Books sorted by Languages</content>
+    <link type="application/atom+xml;type=feed;profile=opds-catalog" href="/opds/navcatalog/4e6c616e677561676573?library_id=Calibre_Library"/>
+  </entry>
+  <entry>
+    <title>By Publisher</title>
+    <id>calibre-navcatalog:9cefcfd4ebfe8f360a085e8d9b69f29a9fff9e51</id>
+    <updated>2026-03-22T20:13:42+00:00</updated>
+    <content type="text">Books sorted by Publisher</content>
+    <link type="application/atom+xml;type=feed;profile=opds-catalog" href="/opds/navcatalog/4e7075626c6973686572?library_id=Calibre_Library"/>
+  </entry>
+  <entry>
+    <title>By Rating</title>
+    <id>calibre-navcatalog:102b95ced488e1385dd9819476f1297f980bff5b</id>
+    <updated>2026-03-22T20:13:42+00:00</updated>
+    <content type="text">Books sorted by Rating</content>
+    <link type="application/atom+xml;type=feed;profile=opds-catalog" href="/opds/navcatalog/4e726174696e67?library_id=Calibre_Library"/>
+  </entry>
+  <entry>
+    <title>By Series</title>
+    <id>calibre-navcatalog:e82cb325314fef623396b055d2f3df14440c5245</id>
+    <updated>2026-03-22T20:13:42+00:00</updated>
+    <content type="text">Books sorted by Series</content>
+    <link type="application/atom+xml;type=feed;profile=opds-catalog" href="/opds/navcatalog/4e736572696573?library_id=Calibre_Library"/>
+  </entry>
+  <entry>
+    <title>By Tags</title>
+    <id>calibre-navcatalog:f96a77313f753d0f2a058499e204f3f04cf26687</id>
+    <updated>2026-03-22T20:13:42+00:00</updated>
+    <content type="text">Books sorted by Tags</content>
+    <link type="application/atom+xml;type=feed;profile=opds-catalog" href="/opds/navcatalog/4e74616773?library_id=Calibre_Library"/>
+  </entry>
+  <entry>
+    <title>Library: Calibre_Library</title>
+    <id>calibre-library:Calibre_Library</id>
+    <updated>2026-03-22T20:13:42+00:00</updated>
+    <content type="text">Change calibre library to: Calibre_Library</content>
+    <link type="application/atom+xml;type=feed;profile=opds-catalog" href="/opds?library_id=Calibre_Library"/>
+  </entry>
+</feed>

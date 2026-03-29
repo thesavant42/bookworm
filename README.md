@@ -1,131 +1,56 @@
 
-## Bookworm CLI - OPDS Book Download Tool
+User Journey: 
 
-A command-line utility for downloading books from Calibre OPDS servers.
+As a user of ebook servers looking to expand my knowledge, I want to create an MCP service (FastMCP, STDIO) to search a collection of book servews by keywords, and to download and parse the content via AI.
 
-### Quick Start
 
-1. **Add a server:**
-   ```bash
-   python bookworm.py add-server http://69.144.163.41:8080/opds
-   ```
+## Assets: OPDS Servers
+-Collect list of OPDS servers, like these, which I will use for testing:
+    - http://69.144.163.41:8080/opds
+    - https://calibrebooks.dwilliams.cloud/opds
+    - http://66.110.246.39:8980/opds
 
-2. **Set the default server using .env file:**
-   ```bash
-   python bookworm.py dotenv 1
-   ```
-   This creates a `.env` file in your project directory.
+- Each opds xml contains the names of each of the libraries available on that server.
 
-3. **Search for books:**
-   ```bash
-   python bookworm.py search "haunted mansion"
-   ```
+ They can be found by grepping for `title>Library:` in the opds:
 
-4. **Override for a single command:**
-   ```bash
-   python bookworm.py --target=http://108.20.223.3:7000/opds search "yetis"
-   ```
-
-### Server Management
-
-The server URL is determined by this priority order:
-1. `--target` flag (highest priority - explicit override)
-2. `BOOKWORM_SERVER` environment variable
-3. `.env` file (BOOKWORM_SERVER in current directory)
-4. Config default server (set via `set-default-server` command)
-5. No server (error if none configured)
-
-#### List configured servers
-```bash
-python bookworm.py list-servers
+```sh
+jbras@lilG:/mnt/c/Users/jbras/New folder/bookworm-cli/opds$ grep 'title>Library' *
+66-10-246-39-8980-opds.xml:    <title>Library: Calibre_Library</title>
+69-144-163-41-8080-opds.xml:    <title>Library: books</title>
+calibrebooks-dwilliams-opds.xml:    <title>Library: Computer Books</title>
+calibrebooks-dwilliams-opds.xml:    <title>Library: Magazines</title>
+calibrebooks-dwilliams-opds.xml:    <title>Library: Regular Books</title>
+calibrebooks-dwilliams-opds.xml:    <title>Library: Temp</title>
+jbras@lilG:/mnt/c/Users/jbras/New folder/bookworm-cli/opds$ 
 ```
 
-#### Add a new server
-```bash
-python bookworm.py add-server <url>
-```
 
-#### Remove a server
-```bash
-python bookworm.py remove-server <url>
-```
+---
 
-#### Set default server in config
-```bash
-python bookworm.py set-default-server <index>
-```
-Where `<index>` is the 1-based position from `list-servers` output.
+## Search for books
 
-#### Create .env file for project-specific server
-```bash
-python bookworm.py dotenv <index>
-```
-This creates a `.env` file in the current directory that will be automatically loaded.
+- `http://66.110.246.39:8980/#library_id=Calibre_Library&panel=book_list^search`
 
-#### Set environment variable for current session
-```bash
-set BOOKWORM_SERVER=http://69.144.163.41:8080/opds
-```
-(On Linux/macOS: `export BOOKWORM_SERVER=http://69.144.163.41:8080/opds`)
+### I want to download the Indiana Jones coloring book, so I search for "Indioana Jones" (url encode the spaces and specials)
 
-### Search and Browse
+#### NO MATCH!
 
-#### Search for books
-```bash
-python bookworm.py search <query> [options]
-```
+- `http://66.110.246.39:8980/#library_id=Calibre_Library&panel=book_list&search=indiana%20jones&sort=timestamp.desc`
 
-Options:
-- `--num, -n`: Number of results per page (default: 25)
-- `--sort, -s`: Sort field (date, author, title, rating, size, tags, series)
-- `--order, -o`: Sort order (ascending, descending)
-- `--save, -S`: Download book by index or ID
-- `--save-all, -A`: Download all search results
-- `--format, -f`: Book format (epub, pdf, mobi, azw3)
-- `--output-folder, -O`: Output directory
-- `--cover, -c`: Download book cover images
-- `--delay, -d`: Delay between downloads in seconds
+-- 8 results, *none* of them what I am looking for.
+-- That's ok, let's move on and search the next server.
 
-#### Browse catalogs
-```bash
-python bookworm.py browse
-```
 
-#### Download a specific book by ID
-```bash
-python bookworm.py download <book_id>
-```
+#### MATCH!
 
-### Examples
+- [`http://69.144.163.41:8080/#library_id=books&panel=book_list&search=indiana%20jones&sort=timestamp.desc`](/69-144-163-41-html.md)
+-- This is what I am looking for!
+--- `19` reuslts!
+    - `http://69.144.163.41:8080/interface-data/books-init?library_id=books&search=indiana%20jones&sort=timestamp.desc&1774765856759`
+    - Download links are embedded in the `<span>` of each result.
+        - `<span class="button"><a href="/legacy/get/CBR/94036/books/Indiana%20Jones%20Colouring%20Set%20-%20Unknown_94036.cbr">cbr</a></span><div class="data-container">` 
 
-```bash
-# Set server and search using .env file
-python bookworm.py dotenv 1
-python bookworm.py search "haunted mansion"
 
-# Set environment variable for current session
-set BOOKWORM_SERVER=http://69.144.163.41:8080/opds
-python bookworm.py search "haunted mansion"
-
-# Override server for a single command
-python bookworm.py --target=http://108.20.223.3:7000/opds search "yetis"
-
-# Search and download all results in EPUB format
-python bookworm.py search "haunted mansion" --save-all --format epub --output-folder ./books
-
-# Browse with explicit target
-python bookworm.py browse --target http://example.com:8080/opds
-```
-
-### Configuration
-
-Configuration is stored in `~/.bookworm/config.json`. Contains:
-- `opds_servers`: List of configured server URLs
-- `default_server`: Default server (used if no env var or --target specified)
-- `download_format`: Preferred format (default: epub)
-- `output_directory`: Default download location
-
-### Known Issues
-
-- [ ] format - **NOT TESTED** - Search results may return limited formats
-- [ ] cover - **NOT TESTED** - Cover embedding in downloaded files
+Mope info:
+- `https://github.com/goodlibs/calibre-opds-client` - Calibre plugin, does not work as is. May be a good candidate for porting?
