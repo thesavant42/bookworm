@@ -1,0 +1,14 @@
+README.md
+pyproject.toml
+bookworm/__init__.py
+bookworm/cli.py
+bookworm/client.py
+bookworm/config.py
+bookworm/download.py
+bookworm/search.py
+bookworm.egg-info/PKG-INFO
+bookworm.egg-info/SOURCES.txt
+bookworm.egg-info/dependency_links.txt
+bookworm.egg-info/entry_points.txt
+bookworm.egg-info/requires.txt
+bookworm.egg-info/top_level.txt
