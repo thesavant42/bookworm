@@ -82,3 +82,78 @@ These are other endpoints of interest that were observed during intial research.
 ### Get Cover
  - `http://69.144.163.41:8080/get/cover/93730/books?library_id=books&1774746720082`
  - Retuns an image of the cover of the title
+
+---
+This is the help screen, ad created by the presumptuos rogue AI:
+ ## Current status
+
+```sh
+ PS C:\Users\jbras\New folder\bookworm-cli> python bookworm.py                                       
+usage: bookworm.py [-h] [--target TARGET] [--library-id LIBRARY_ID] [--download DOWNLOAD]
+                   [--format {epub,pdf,mobi,azw3}] [--output-folder OUTPUT_FOLDER] [--cover]
+                   {browse,search,download,list-servers,add-server,remove-server} ...
+
+Bookworm - Download books from Calibre OPDS servers
+
+positional arguments:
+  {browse,search,download,list-servers,add-server,remove-server}
+                        Available commands
+    browse              Browse available catalogs
+    search              Search for books
+    download            Download a specific book
+    list-servers        List configured servers
+    add-server          Add a new server
+    remove-server       Remove a server
+
+options:
+  -h, --help            show this help message and exit
+  --target, -t TARGET   OPDS server URL (e.g., http://example.com:8080/opds)
+  --library-id, -l LIBRARY_ID
+                        Library ID for multi-library servers
+  --download, -D DOWNLOAD
+                        Download book by ID
+  --format, -f {epub,pdf,mobi,azw3}
+                        Book format to download
+  --output-folder, -O OUTPUT_FOLDER
+                        Output directory for downloads
+  --cover, -c           Download book cover image
+
+Examples:
+  bookworm.py --target="http://69.144.163.41:8080/opds"
+  bookworm.py --target="http://69.144.163.41:8080/opds" --search="haunted mansion"
+  bookworm.py --target="http://69.144.163.41:8080/opds" --save="94190"
+  bookworm.py --target="http://69.144.163.41:8080/opds" --search="haunt" --save-all --output-folder="./books"
+```        
+
+Task: Determine if this is still accurate, or if we need to change the code.
+
+ - [x] search - returns search results, 15 I think?
+ - [x] download - have confirmed downloading 1 book so far, it worked
+ - [ ] format - **NOT TESTED** - Search results only return 1 format?
+ - [x] output-folder - works as designed
+ - [ ] cover - **NOT TESTED** - hopefully the image is still embedded in the saved file
+
+```sh
+ PS C:\Users\jbras\New folder\bookworm-cli> python .\bookworm.py  add-servers  
+usage: bookworm.py [-h] [--target TARGET] [--library-id LIBRARY_ID] [--download DOWNLOAD]
+                   [--format {epub,pdf,mobi,azw3}] [--output-folder OUTPUT_FOLDER] [--cover]        
+                   {browse,search,download,list-servers,add-server,remove-server} ...
+bookworm.py: error: argument command: invalid choice: 'add-servers' (choose from browse, search, download, list-servers, add-server, remove-server)
+PS C:\Users\jbras\New folder\bookworm-cli> python .\bookworm.py  add-server  
+usage: bookworm.py add-server [-h] [--set-default] url
+bookworm.py add-server: error: the following arguments are required: url
+PS C:\Users\jbras\New folder\bookworm-cli> python .\bookworm.py  add-server http://69.144.163.41:8080/opds
+Added server: http://69.144.163.41:8080/opds
+PS C:\Users\jbras\New folder\bookworm-cli> python .\bookworm.py  list-servers                       
+Configured OPDS servers:
+  1. http://69.144.163.41:8080/opds
+PS C:\Users\jbras\New folder\bookworm-cli> python .\bookworm.py  --search="yeti"                    
+usage: bookworm.py [-h] [--target TARGET] [--library-id LIBRARY_ID] [--download DOWNLOAD]
+                   [--format {epub,pdf,mobi,azw3}] [--output-folder OUTPUT_FOLDER] [--cover]        
+                   {browse,search,download,list-servers,add-server,remove-server} ...
+bookworm.py: error: unrecognized arguments: --search=yeti
+PS C:\Users\jbras\New folder\bookworm-cli> 
+```
+
+-- Question: How do I use the "saved servers" feature? 
+-- Question: How do I manage pagination and sorting? Not mentuioned in help or in README.
