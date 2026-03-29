@@ -21,6 +21,22 @@ from opds_client import OpdsClient
 from config import config
 
 
+def load_env_file(env_path: Path) -> dict:
+    """Load environment variables from a .env file"""
+    env_vars = {}
+    if env_path.exists():
+        try:
+            with open(env_path, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        key, _, value = line.partition('=')
+                        env_vars[key.strip()] = value.strip().strip('"\'')
+        except Exception:
+            pass
+    return env_vars
+
+
 def sanitize_filename(name: str) -> str:
     """Remove or replace characters that are invalid in filenames"""
     invalid_chars = '<>:"/\\|?*'
@@ -293,6 +309,115 @@ def cmd_remove_server(args):
     return 0
 
 
+def cmd_set_default_server(args):
+    """Set a saved server as the default"""
+    servers = config.opds_servers
+    
+    if not servers:
+        print("No servers configured. Use 'add-server' command first.")
+        return 1
+    
+    # If index provided, use that server
+    try:
+        idx = int(args.index) - 1
+        if 0 <= idx < len(servers):
+            config.default_server = servers[idx]
+            server = servers[idx]
+            print(f"Set default server: {server}")
+            print(f"\nTo use this server for the current session, set the environment variable:")
+            print(f"  PowerShell: $env:BOOKWORM_SERVER=\"{server}\"")
+            print(f"  CMD:        set BOOKWORM_SERVER={server}")
+            print(f"  Linux/macOS:  export BOOKWORM_SERVER=\"{server}\"")
+            print(f"\nOr create a .env file in your project directory with:")
+            print(f"  BOOKWORM_SERVER={server}")
+            return 0
+        else:
+            print(f"Invalid index. Valid range: 1-{len(servers)}")
+            return 1
+    except ValueError:
+        print("Index must be a number")
+        return 1
+
+
+def cmd_dotenv(args):
+    """Create or update .env file with the server configuration"""
+    servers = config.opds_servers
+    
+    if not servers:
+        print("No servers configured. Use 'add-server' command first.")
+        return 1
+    
+    # If index provided, use that server
+    try:
+        idx = int(args.index) - 1
+        if 0 <= idx < len(servers):
+            server = servers[idx]
+            env_file = Path.cwd() / '.env'
+            
+            # Read existing .env file if it exists
+            env_vars = load_env_file(env_file)
+            env_vars['BOOKWORM_SERVER'] = server
+            
+            # Write to .env file
+            with open(env_file, 'w') as f:
+                f.write(f"# Bookworm configuration\n")
+                f.write(f"BOOKWORM_SERVER={server}\n")
+            
+            print(f"Created/updated .env file with server: {server}")
+            print(f"File: {env_file}")
+            return 0
+        else:
+            print(f"Invalid index. Valid range: 1-{len(servers)}")
+            return 1
+    except ValueError:
+        print("Index must be a number")
+        return 1
+
+
+def get_server_url(args) -> Optional[str]:
+    """
+    Get the server URL with the following priority:
+    1. --target flag (explicit override)
+    2. BOOKWORM_SERVER environment variable
+    3. .env file (BOOKWORM_SERVER)
+    4. Config default server
+    """
+    # Highest priority: explicit --target flag
+    if args.target:
+        return args.target
+    
+    # Medium priority: environment variable
+    env_server = os.environ.get('BOOKWORM_SERVER')
+    if env_server:
+        return env_server
+    
+    # Check .env file in current directory
+    env_file = Path.cwd() / '.env'
+    env_vars = load_env_file(env_file)
+    if 'BOOKWORM_SERVER' in env_vars:
+        return env_vars['BOOKWORM_SERVER']
+    
+    # Lowest priority: config default server
+    return config.default_server
+    """
+    Get the server URL with the following priority:
+    1. --target flag (explicit override)
+    2. BOOKWORM_SERVER environment variable
+    3. config.default_server
+    """
+    # Highest priority: explicit --target flag
+    if args.target:
+        return args.target
+    
+    # Medium priority: environment variable
+    env_server = os.environ.get('BOOKWORM_SERVER')
+    if env_server:
+        return env_server
+    
+    # Lowest priority: config default server
+    return config.default_server
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Bookworm - Download books from Calibre OPDS servers',
@@ -380,6 +505,16 @@ Examples:
     remove_parser.add_argument('url', help='Server URL to remove')
     remove_parser.set_defaults(func=cmd_remove_server)
 
+    # Set default server command
+    set_default_parser = subparsers.add_parser('set-default-server', help='Set a saved server as default')
+    set_default_parser.add_argument('index', help='Server index (1-based) to set as default')
+    set_default_parser.set_defaults(func=cmd_set_default_server)
+
+    # Dotenv command
+    dotenv_parser = subparsers.add_parser('dotenv', help='Create/update .env file with server')
+    dotenv_parser.add_argument('index', help='Server index (1-based) to use for .env file')
+    dotenv_parser.set_defaults(func=cmd_dotenv)
+
     args = parser.parse_args()
 
     # Handle legacy mode (no subcommand)
@@ -394,8 +529,22 @@ Examples:
         parser.print_help()
         return 0
 
-    if not args.target and args.command not in ['list-servers', 'add-server', 'remove-server']:
-        parser.error('--target is required for this command')
+    # Commands that require a target
+    target_required_commands = ['browse', 'search', 'download']
+    
+    if args.command in target_required_commands:
+        # Get server URL using priority chain
+        server_url = get_server_url(args)
+        if server_url:
+            args.target = server_url
+            print(f"Using server: {args.target}")
+            if os.environ.get('BOOKWORM_SERVER'):
+                print("  (from BOOKWORM_SERVER environment variable)")
+        else:
+            print("Error: No target specified.")
+            print("Set BOOKWORM_SERVER environment variable or use --target flag.")
+            print("Example: set BOOKWORM_SERVER=http://69.144.163.41:8080/opds")
+            return 1
 
     return args.func(args)
 
