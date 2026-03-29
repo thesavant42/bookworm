@@ -34,9 +34,9 @@ dependencies = [
 bookworm = "bookworm.cli:cli"
 
 [project.urls]
-Homepage = "https://github.com/example/bookworm"
-Documentation = "https://github.com/example/bookworm#readme"
-Repository = "https://github.com/example/bookworm.git"
+Homepage = "https://github.com/thesavant42/bookworm"
+Documentation = "https://github.com/thesavant42/bookworm#readme"
+Repository = "https://github.com/thesavant42/bookworm.git"
 
 [tool.setuptools.packages.find]
 where = ["."]

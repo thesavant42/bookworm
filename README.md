@@ -4,9 +4,26 @@ A minimalist CLI utility for searching and downloading ebooks from Calibre conte
 
 ## Installation
 
+### From GitHub Releases
+
 ```bash
+# Install specific version
+uv install https://github.com/thesavant42/bookworm/releases/download/v1.0.0/bookworm-1.0.0-py3-none-any.whl
+
+# Or using pip
+pip install https://github.com/thesavant42/bookworm/releases/download/v1.0.0/bookworm-1.0.0-py3-none-any.whl
+```
+
+### From Source
+
+```bash
+# Clone the repository
+git clone https://github.com/thesavant42/bookworm.git
+cd bookworm
 pip install -e .
 ```
+
+---
 
 ## Quick Start
 
