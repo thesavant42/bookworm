@@ -154,6 +154,17 @@ usage: bookworm.py [-h] [--target TARGET] [--library-id LIBRARY_ID] [--download 
 bookworm.py: error: unrecognized arguments: --search=yeti
 PS C:\Users\jbras\New folder\bookworm-cli> 
 ```
+---
+
+## Open Questions
 
 -- Question: How do I use the "saved servers" feature? 
+-- A:
 -- Question: How do I manage pagination and sorting? Not mentuioned in help or in README.
+-- A:
+-- Question: Which files in this workspace are safe to remove? This repo is SWELLING.
+-- A:
+-- Question: How can I add multiple servers to seaech and download from? 
+  -- http://108.20.223.3:7000/opds is another server
+  -- https://calibrebooks.dwilliams.cloud/ is another
+-- A:  
