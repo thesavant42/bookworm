@@ -1,6 +1,8 @@
 # Bookworm
 by josh "thesavant42" brashars
 
+![/images/bookworm-003.png](/images/bookworm-003.png)
+
 A minimalist CLI utility for searching and downloading ebooks from Calibre content servers.
 
 ## Installation
