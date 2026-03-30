@@ -5,6 +5,7 @@ bookworm/cli.py
 bookworm/client.py
 bookworm/config.py
 bookworm/download.py
+bookworm/mcp_server.py
 bookworm/search.py
 bookworm.egg-info/PKG-INFO
 bookworm.egg-info/SOURCES.txt

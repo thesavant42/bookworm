@@ -4,8 +4,8 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from .client import CalibreClient
-from .search import search_books
+from bookworm.client import CalibreClient
+from bookworm.search import search_books
 
 
 def download_book(

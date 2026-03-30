@@ -33,16 +33,16 @@ pip install -e .
 Add server URLs to the configuration:
 
 ```bash
-bookworm config add http://69.144.163.41:8080
-bookworm config add http://66.110.246.39:8980
+bookworm config add http://192.168.1.1:8080
+bookworm config add http://192.168.1.1:8980
 ```
 
 Or create `~/.bookworm/servers` file with one URL per line:
 
 ```
-http://69.144.163.41:8080
-http://66.110.246.39:8980
-https://calibrebooks.dwilliams.cloud
+http://192.168.1.1:8080
+http://192.168.1.1:8980
+https://192.168.1.1
 ```
 
 ### Search for Books
@@ -136,9 +136,9 @@ Bookworm stores server URLs in `~/.bookworm/servers`. Each URL is on a separate 
 
 ```
 # Example ~/.bookworm/servers
-http://69.144.163.41:8080
-http://66.110.246.39:8980
-https://calibrebooks.dwilliams.cloud
+http://192.168.1.1:8080
+http://192.168.1.1:8980
+https://192.168.1.1
 ```
 
 The application iterates through the list and tries each server until one responds.
@@ -178,3 +178,118 @@ python -m bookworm.cli search --query "test"
 ## License
 
 MIT
+
+---
+
+## MCP (Model Context Protocol) Integration
+
+Bookworm can be run as an MCP server, enabling AI assistants like Claude Desktop, Cursor, and Gemini to search and download ebooks directly.
+
+### Running as MCP Server
+
+```bash
+# Using fastmcp CLI
+fastmcp run bookworm/mcp_server.py
+
+# Or with uv
+uv run fastmcp run bookworm/mcp_server.py
+```
+
+### Available MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `search_books` | Search for books on Calibre servers |
+| `download_books` | Download books by ID |
+| `add_server` | Add a Calibre server URL to configuration |
+| `remove_server` | Remove a Calibre server URL from configuration |
+| `list_servers` | List all configured Calibre servers |
+
+### Available MCP Resources
+
+| Resource | Description |
+|----------|-------------|
+| `config://servers` | List configured Calibre server URLs |
+| `config://bookworm/settings` | Get Bookworm configuration settings |
+| `book://{id}` | Get metadata for a specific book by ID |
+
+### Available MCP Prompts
+
+| Prompt | Description |
+|--------|-------------|
+| `search_guide` | Guide for searching books on Calibre servers |
+| `download_guide` | Guide for downloading books from Calibre servers |
+| `server_setup` | Guide for setting up Calibre servers |
+
+### Installation for MCP Clients
+
+#### VS Code (Roo Code / Cline)
+
+Add to your MCP settings (`~/.roo/mcp_settings.json` or VS Code settings):
+
+```json
+{
+  "mcpServers": {
+    "bookworm": {
+      "command": "uv",
+      "args": ["run", "fastmcp", "run", "bookworm/mcp_server.py"],
+      "cwd": "/path/to/bookworm"
+    }
+  }
+}
+```
+
+Or using pip/venv:
+
+```json
+{
+  "mcpServers": {
+    "bookworm": {
+      "command": "python",
+      "args": ["-m", "fastmcp", "run", "bookworm/mcp_server.py"],
+      "cwd": "/path/to/bookworm"
+    }
+  }
+}
+```
+
+#### Claude Desktop
+
+```bash
+fastmcp install claude-bookworm bookworm/mcp_server.py
+```
+
+#### Cursor
+
+```bash
+fastmcp install cursor bookworm/mcp_server.py
+```
+
+#### Manual Configuration
+
+Add to your MCP client configuration:
+
+```json
+{
+  "mcpServers": {
+    "bookworm": {
+      "command": "uv",
+      "args": ["run", "fastmcp", "run", "bookworm/mcp_server.py"],
+      "cwd": "/path/to/bookworm"
+    }
+  }
+}
+```
+
+### Example MCP Usage
+
+```
+User: "Find fantasy novels in EPUB format"
+Assistant: Uses search_books tool with query="fantasy novels", format_filter="epub"
+
+User: "Download book ID 12345"
+Assistant: Uses download_books tool with book_ids=[12345]
+
+User: "What servers are configured?"
+Assistant: Uses list_servers tool to show configured Calibre servers
+```

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://gofastmcp.com/public/schemas/fastmcp.json/v1.json",
+  "source": {
+    "path": "bookworm/mcp_server.py",
+    "entrypoint": "mcp"
+  },
+  "environment": {
+    "python": ">=3.10",
+    "dependencies": [
+      "click>=8.0.0",
+      "httpx>=0.24.0",
+      "fastmcp>=2.0.0"
+    ]
+  },
+  "deployment": {
+    "transport": "stdio",
+    "log_level": "INFO"
+  }
+}

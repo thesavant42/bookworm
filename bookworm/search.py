@@ -2,7 +2,7 @@
 
 from typing import Dict, List, Optional
 
-from .client import CalibreClient
+from bookworm.client import CalibreClient
 
 
 PAGE_SIZE = 50  # HARD LIMIT - Calibre servers will crash if exceeded
