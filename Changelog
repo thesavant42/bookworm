@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.2] - 03/30/2026
+
+### Fixed
+- Critical bug: Library ID was hardcoded to "books", preventing downloads from servers with different library names
+  - Now automatically fetches library ID from server's `/opds` endpoint on first connection
+  - CLI `--library` default changed from `"books"` to `None` (auto-detect)
+  - MCP server now passes `library=None` to enable auto-detection
+
+### Added
+- File-based logging for MCP server (`~/.bookworm/mcp_server.log`)
+- File-based logging for download operations (`~/.bookworm/download.log`)
+  - Logs include: function calls, parameters, book metadata (title, author, formats), download progress, errors with stack traces
+- Debug-level logging for HTTP request/response details when enabled
+
 ## [0.0.1] - 03/29/2026
 
 ### Added

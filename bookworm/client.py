@@ -1,6 +1,7 @@
 """HTTP client for Calibre API interactions."""
 
 import urllib.parse
+import xml.etree.ElementTree as ET
 from typing import Any, Dict, Optional, Tuple
 
 import httpx
@@ -9,7 +10,7 @@ import httpx
 class CalibreClient:
     """HTTP client for interacting with Calibre content server API."""
     
-    def __init__(self, base_url: str, library_id: str = "books", debug: bool = False):
+    def __init__(self, base_url: str, library_id: str = None, debug: bool = False):
         """
         Initialize the Calibre client.
         
@@ -19,9 +20,48 @@ class CalibreClient:
             debug: Enable verbose HTTP request/response logging (default: False)
         """
         self.base_url = base_url.rstrip('/')
-        self.library_id = library_id
         self.debug = debug
         self._client = httpx.Client(timeout=60.0)
+        
+        # If no library_id provided, fetch from OPDS (failfast - no defaults)
+        if library_id is None:
+            library_id = self.get_library_id_from_opds()
+        self.library_id = library_id
+    
+    def get_library_id_from_opds(self) -> str:
+        """
+        Fetch the library ID from the /opds endpoint.
+        
+        Returns:
+            Library ID string (e.g., "Calibre_Library")
+            
+        Raises:
+            RuntimeError: If OPDS fetch fails or library ID not found
+        """
+        response = self._client.get(f"{self.base_url}/opds")
+        
+        if response.status_code != 200:
+            raise RuntimeError(f"Failed to fetch OPDS: {response.status_code} - {response.text[:200]}")
+        
+        # Parse XML to find the library ID
+        root = ET.fromstring(response.text)
+        
+        # Find the library entry
+        ns = {'atom': 'http://www.w3.org/2005/Atom'}
+        for entry in root.findall('.//atom:entry', ns):
+            title_elem = entry.find('atom:title', ns)
+            
+            if title_elem is not None:
+                title = title_elem.text
+                
+                if title.startswith("Library:"):
+                    # Extract library ID from "Library: <id>" format
+                    library_id = title.replace("Library:", "").strip()
+                    if not library_id:
+                        raise RuntimeError("Empty library ID from OPDS")
+                    return library_id
+        
+        raise RuntimeError("No library entry found in OPDS feed")
     
     def _print_request(self, method: str, url: str, headers: Dict[str, str] = None, body: str = None) -> None:
         """Print HTTP request details."""
@@ -215,7 +255,7 @@ class CalibreClient:
         Returns:
             Tuple of (filename, content)
         """
-        status_code, headers, content = self._download(f"/get/{format}/{book_id}/books")
+        status_code, headers, content = self._download(f"/get/{format}/{book_id}/{self.library_id}")
         
         if status_code != 200:
             raise RuntimeError(f"Failed to download book: {status_code}")
@@ -223,7 +263,12 @@ class CalibreClient:
         import re
         # Use title-based filename if provided
         if title:
-            safe_title = re.sub(r'[<>:"/\\|?*]', '_', title)
+            # Replace all non-alphanumeric characters with underscores
+            safe_title = re.sub(r'[^a-zA-Z0-9]', '_', title)
+            # Collapse multiple underscores into one
+            safe_title = re.sub(r'_+', '_', safe_title)
+            # Remove leading/trailing underscores
+            safe_title = safe_title.strip('_')
             filename = f"{safe_title}.{format.lower()}"
         else:
             filename = f"book_{book_id}.{format.lower()}"

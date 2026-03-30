@@ -1,5 +1,6 @@
 """FastMCP server for Bookworm - Calibre ebook search and download service."""
 
+import logging
 from pathlib import Path
 from typing import Optional
 
@@ -10,6 +11,27 @@ from bookworm import config
 from bookworm.download import download_book
 from bookworm.search import search_books as search_books_module, format_result
 
+# Configure logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+# File handler - writes to bookworm.log in user's home directory
+log_file_path = Path.home() / ".bookworm" / "mcp_server.log"
+log_file_path.parent.mkdir(parents=True, exist_ok=True)
+
+file_handler = logging.FileHandler(log_file_path)
+file_handler.setLevel(logging.DEBUG)
+
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
+
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
+
 # Aliases for config functions
 config_add_server = config.add_server
 config_list_servers = config.load_servers
@@ -17,10 +39,7 @@ config_remove_server = config.remove_server
 
 
 # Create the FastMCP server instance
-mcp = FastMCP(
-    name="Bookworm MCP Server",
-    description="Search and download ebooks from Calibre content servers",
-)
+mcp = FastMCP("Bookworm MCP Server")
 
 
 # =============================================================================
@@ -31,7 +50,7 @@ mcp = FastMCP(
 async def search_books(
     query: str,
     server: Optional[str] = None,
-    library: str = "books",
+    library: str = None,
     format_filter: Optional[str] = None,
     sort: Optional[str] = None,
     order: str = "desc",
@@ -55,21 +74,28 @@ async def search_books(
         Formatted search results
     """
     try:
+        logger.info(f"search_books: query='{query}', server={server}, library={library}, format={format_filter}, limit={limit}")
+        
         # Get client
         if server:
+            logger.debug(f"Using provided server: {server}")
             client = CalibreClient(server, library)
         else:
             servers = config.load_servers()
             if not servers:
+                logger.warning("No servers configured")
                 return "Error: No servers configured. Use add_server tool or configure ~/.bookworm/servers"
             
             client = None
             for server_url in servers:
+                logger.debug(f"Trying server: {server_url}")
                 try:
                     client = CalibreClient(server_url, library)
                     client.get_books_init("test")
+                    logger.info(f"Connected to server: {server_url}")
                     break
-                except Exception:
+                except Exception as e:
+                    logger.debug(f"Server {server_url} failed: {e}")
                     continue
             
             if not client:
@@ -89,6 +115,8 @@ async def search_books(
         # Format results
         formatted_books = {bid: format_result(str(bid), meta) for bid, meta in books.items()}
         
+        logger.info(f"Search found {len(formatted_books)} results")
+        
         # Build result string
         result_lines = []
         result_lines.append(f"Found {len(formatted_books)} results:")
@@ -103,6 +131,7 @@ async def search_books(
         return "\n".join(result_lines)
         
     except Exception as e:
+        logger.error(f"Error searching books: {e}", exc_info=True)
         return f"Error searching books: {str(e)}"
 
 
@@ -110,7 +139,7 @@ async def search_books(
 async def download_books(
     book_ids: list,
     server: Optional[str] = None,
-    library: str = "books",
+    library: str = None,
     format: Optional[str] = None,
     output: Optional[str] = None
 ) -> str:
@@ -128,24 +157,41 @@ async def download_books(
         Download status and file paths
     """
     try:
+        logger.info(f"download_books: book_ids={book_ids}, server={server}, library={library}, format={format}")
+        
         # Get client
         if server:
+            logger.debug(f"Using provided server: {server}")
             client = CalibreClient(server, library)
         else:
             servers = config.load_servers()
             if not servers:
+                logger.warning("No servers configured for download")
                 return "Error: No servers configured. Use add_server tool or configure ~/.bookworm/servers"
             
             client = None
             for server_url in servers:
+                logger.debug(f"Trying server for download: {server_url}")
                 try:
                     client = CalibreClient(server_url, library)
+                    # Try with the specified library ID
                     client.get_books_init("test")
+                    logger.info(f"Connected to server for download: {server_url}")
                     break
-                except Exception:
-                    continue
+                except Exception as e:
+                    logger.debug(f"Server {server_url} failed for download: {e}")
+                    # Try default library if specified library fails
+                    try:
+                        client = CalibreClient(server_url, None)  # Let client auto-detect library from OPDS
+                        client.get_books_init("test")
+                        library = client.library_id
+                        logger.info(f"Auto-detected library '{library}' from server {server_url}")
+                        break
+                    except Exception:
+                        continue
             
             if not client:
+                logger.error("All configured servers failed to respond for download")
                 return "Error: All configured servers failed to respond"
         
         # Download books
@@ -154,13 +200,16 @@ async def download_books(
         
         for book_id in book_ids:
             try:
+                logger.info(f"Downloading book ID: {book_id}")
                 # Convert to int if string
                 if isinstance(book_id, str):
                     book_id = int(book_id)
                 
                 path = download_book(client, book_id, output, format)
                 downloaded.append(path)
+                logger.info(f"Successfully downloaded book {book_id} to {path}")
             except Exception as e:
+                logger.error(f"Failed to download book {book_id}: {e}", exc_info=True)
                 failed.append(f"{book_id}: {str(e)}")
         
         # Build result
@@ -175,9 +224,11 @@ async def download_books(
             for failure in failed:
                 result_lines.append(f"  - {failure}")
         
+        logger.info(f"Download complete: {len(downloaded)} success, {len(failed)} failed")
         return "\n".join(result_lines)
         
     except Exception as e:
+        logger.error(f"Error downloading books: {e}", exc_info=True)
         return f"Error downloading books: {str(e)}"
 
 
@@ -279,10 +330,13 @@ def get_book_metadata(book_id: str) -> str:
         
         for server_url in servers:
             try:
-                client = CalibreClient(server_url, "books")
+                # Auto-detect library from /opds
+                client = CalibreClient(server_url, None)
                 metadata = client.get_book_metadata(int(book_id))
+                logger.info(f"Got metadata for book {book_id} from {server_url}, library={client.library_id}")
                 return json.dumps(metadata, indent=2)
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Failed to get metadata from {server_url}: {e}")
                 continue
         
         return json.dumps({"error": "Could not fetch book metadata from any server"})
@@ -369,8 +423,19 @@ Tips:
 - You can add multiple servers for redundancy
 - Bookworm automatically tries each configured server
 - Use the server parameter in search/download to override configured servers
-
 Common Calibre server URLs:
 - Public servers often follow patterns like http://IP:8080 or http://IP:8980
 - Some servers require authentication (not currently supported)
 """
+
+
+# =============================================================================
+# MAIN ENTRY POINT
+# =============================================================================
+
+if __name__ == "__main__":
+    try:
+        log("Starting MCP server run()")
+        mcp.run()
+    except Exception as e:
+        log_fatal(f"FATAL ERROR starting MCP server: {e}")
