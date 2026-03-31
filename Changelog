@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **format_filter validation error**: Removed `format_filter` parameter from MCP `search_books` tool signature to eliminate "format_filter cannot be None" validation errors. The parameter was causing MCP tool schema conflicts when omitted by callers.
+
+### Changed
+- **Metadata display format**: Updated `get_book_metadata` MCP tool to properly handle Calibre API field names:
+  - Changed `author` to `authors` (list format)
+  - Changed `format` to `formats` (list format)
+  - Added proper datetime parsing for `pubdate` field (displays as "Jan 2026" instead of ISO strings)
+  - Added `pages` field display support
+  - Added `comments`/notes content display
+  - Added `languages` field display
+  - Improved `identifiers` formatting with ISBN detection
+
 ## [0.0.2] - 03/30/2026
 
 ### Fixed

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bookworm"
-version = "0.0.1"
+version = "0.0.2"
 description = "A minimalist CLI utility for searching and downloading ebooks from Calibre content servers"
 readme = "README.md"
 requires-python = ">=3.10"
