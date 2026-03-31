@@ -50,8 +50,7 @@ mcp = FastMCP("Bookworm MCP Server")
 async def search_books(
     query: str,
     server: Optional[str] = None,
-    library: str = None,
-    format_filter: Optional[str] = None,
+    library: Optional[str] = None,
     sort: Optional[str] = None,
     order: str = "desc",
     limit: int = 50,
@@ -64,7 +63,6 @@ async def search_books(
         query: Search string (title, author, tags) - REQUIRED
         server: Calibre server URL (optional, uses configured servers if not provided)
         library: Library ID (default: "books")
-        format_filter: Filter by format (epub, pdf, mobi, etc.)
         sort: Sort field (timestamp, title, author, size, rating, pubdate, pages)
         order: Sort order (asc, desc) - default: desc
         limit: Max results to display (default: 50)
@@ -74,7 +72,7 @@ async def search_books(
         Formatted search results
     """
     try:
-        logger.info(f"search_books: query='{query}', server={server}, library={library}, format={format_filter}, limit={limit}")
+        logger.info(f"search_books: query='{query}', server={server}, library={library}, limit={limit}")
         
         # Get client
         if server:
@@ -108,8 +106,7 @@ async def search_books(
             limit=limit,
             fetch_all=fetch_all,
             sort=sort,
-            order=order,
-            format_filter=format_filter
+            order=order
         )
         
         # Format results
@@ -128,7 +125,9 @@ async def search_books(
                 f"Format: {book['format']} | Size: {book['size']:.2f} MB"
             )
         
-        return "\n".join(result_lines)
+        result = "\n".join(result_lines)
+        logger.info(f"search_books result: {result[:200]}...")
+        return result
         
     except Exception as e:
         logger.error(f"Error searching books: {e}", exc_info=True)
@@ -139,7 +138,7 @@ async def search_books(
 async def download_books(
     book_ids: list,
     server: Optional[str] = None,
-    library: str = None,
+    library: Optional[str] = None,
     format: Optional[str] = None,
     output: Optional[str] = None
 ) -> str:
@@ -224,8 +223,10 @@ async def download_books(
             for failure in failed:
                 result_lines.append(f"  - {failure}")
         
+        result = "\n".join(result_lines)
+        logger.info(f"download_books result: {result[:200]}...")
         logger.info(f"Download complete: {len(downloaded)} success, {len(failed)} failed")
-        return "\n".join(result_lines)
+        return result
         
     except Exception as e:
         logger.error(f"Error downloading books: {e}", exc_info=True)
@@ -245,6 +246,7 @@ def add_server(server_url: str) -> str:
     """
     try:
         config_add_server(server_url)
+        logger.info(f"add_server result: Added {server_url} to configuration")
         return f"Added {server_url} to configuration"
     except Exception as e:
         return f"Error adding server: {str(e)}"
@@ -263,6 +265,7 @@ def remove_server(server_url: str) -> str:
     """
     try:
         config_remove_server(server_url)
+        logger.info(f"remove_server result: Removed {server_url} from configuration")
         return f"Removed {server_url} from configuration"
     except Exception as e:
         return f"Error removing server: {str(e)}"
@@ -279,11 +282,231 @@ def list_servers() -> str:
     try:
         servers = config_list_servers()
         if servers:
-            return "Configured servers:\n" + "\n".join(f"  - {s}" for s in servers)
+            result = "Configured servers:\n" + "\n".join(f"  - {s}" for s in servers)
+            logger.info(f"list_servers result: {result[:200]}...")
+            return result
         else:
+            logger.info("list_servers result: No servers configured")
             return "No servers configured. Use add_server to add servers."
     except Exception as e:
         return f"Error listing servers: {str(e)}"
+
+
+@mcp.tool()
+def list_libraries(server: Optional[str] = None) -> str:
+    """
+    List all available libraries from a Calibre server.
+    
+    Args:
+        server: Calibre server URL (optional, uses configured servers if not provided)
+    
+    Returns:
+        Formatted list of available libraries
+    """
+    try:
+        # Get client
+        if server:
+            logger.debug(f"Using provided server: {server}")
+            client = CalibreClient(server, None)
+        else:
+            servers = config.load_servers()
+            if not servers:
+                logger.warning("No servers configured")
+                ctx.info("No servers configured")
+                return "Error: No servers configured. Use add_server to add servers."
+            
+            client = None
+            for server_url in servers:
+                logger.debug(f"Trying server: {server_url}")
+                try:
+                    client = CalibreClient(server_url, None)
+                    logger.info(f"Connected to server: {server_url}")
+                    break
+                except Exception as e:
+                    logger.debug(f"Server {server_url} failed: {e}")
+                    continue
+            
+            if not client:
+                return "Error: All configured servers failed to respond"
+        
+        # Get libraries
+        libraries = client.list_libraries_from_opds()
+        
+        if libraries:
+            result_lines = [f"Available libraries on {client.base_url}:\n"]
+            for lib_id, lib_name in libraries:
+                result_lines.append(f"  - {lib_name} (ID: {lib_id})")
+            result = "\n".join(result_lines)
+            logger.info(f"list_libraries result: {result[:200]}...")
+            return result
+        else:
+            logger.info("list_libraries result: No libraries found")
+            return "No libraries found"
+            
+    except Exception as e:
+        logger.error(f"Error listing libraries: {e}", exc_info=True)
+        return f"Error listing libraries: {str(e)}"
+
+
+@mcp.tool()
+async def get_book_metadata(
+    book_id: int,
+    server: Optional[str] = None,
+    library: Optional[str] = None
+) -> str:
+    """
+    Get metadata for a specific book by ID.
+    
+    Args:
+        book_id: Book ID - REQUIRED
+        server: Calibre server URL (optional, uses configured servers if not provided)
+        library: Library ID (default: "books")
+    
+    Returns:
+        Formatted book metadata including title, author, publisher, published date, format, tags, ISBN
+    """
+    try:
+        logger.info(f"get_book_metadata: book_id={book_id}, server={server}, library={library}")
+        
+        # Get client
+        if server:
+            logger.debug(f"Using provided server: {server}")
+            client = CalibreClient(server, library)
+        else:
+            servers = config.load_servers()
+            if not servers:
+                logger.warning("No servers configured")
+                return "Error: No servers configured. Use add_server tool or configure ~/.bookworm/servers"
+            
+            client = None
+            for server_url in servers:
+                logger.debug(f"Trying server: {server_url}")
+                try:
+                    client = CalibreClient(server_url, library)
+                    client.get_books_init("test")
+                    logger.info(f"Connected to server: {server_url}")
+                    break
+                except Exception as e:
+                    logger.debug(f"Server {server_url} failed: {e}")
+                    # Try default library if specified library fails
+                    try:
+                        client = CalibreClient(server_url, None)  # Let client auto-detect library from OPDS
+                        client.get_books_init("test")
+                        library = client.library_id
+                        logger.info(f"Auto-detected library '{library}' from server {server_url}")
+                        break
+                    except Exception:
+                        continue
+            
+            if not client:
+                return "Error: All configured servers failed to respond"
+        
+        # Fetch metadata
+        metadata = client.get_book_metadata(book_id)
+        logger.info(f"Got metadata for book {book_id} from {client.base_url}, library={client.library_id}")
+        
+        # Format metadata as human-readable string
+        result_lines = []
+        result_lines.append(f"Book ID: {book_id}")
+        result_lines.append("")
+        
+        # Extract and display metadata fields - using correct Calibre API field names
+        # Note: Calibre API returns fields like "authors" (list), "formats" (list), etc.
+        
+        title = metadata.get("title", "Unknown")
+        result_lines.append(f"Title: {title}")
+        
+        # Authors is a list in Calibre API
+        authors = metadata.get("authors", [])
+        if isinstance(authors, list):
+            author_str = " & ".join(authors) if authors else "Unknown"
+        else:
+            author_str = authors if authors else "Unknown"
+        result_lines.append(f"Authors: {author_str}")
+        
+        publisher = metadata.get("publisher", "Unknown")
+        result_lines.append(f"Publisher: {publisher}")
+        
+        # Formats is a list in Calibre API
+        formats = metadata.get("formats", [])
+        if isinstance(formats, list) and formats:
+            format_str = formats[0]
+            result_lines.append(f"Formats: {format_str}")
+        elif isinstance(formats, str) and formats:
+            result_lines.append(f"Formats: {formats}")
+        
+        # Tags
+        tags = metadata.get("tags", [])
+        if isinstance(tags, list) and tags:
+            tags_str = ", ".join(tags)
+            result_lines.append(f"Tags: {tags_str}")
+        
+        # Size in MB
+        size_bytes = metadata.get("size", 0)
+        if size_bytes:
+            size_mb = size_bytes / (1024 * 1024)
+            result_lines.append(f"Size: {size_mb:.1f} MB")
+        
+        # Published date (pubdate from Calibre API)
+        pubdate = metadata.get("pubdate", None)
+        if pubdate:
+            # Handle datetime object or ISO string - format as "Jan 2026"
+            if hasattr(pubdate, 'strftime'):
+                # It's a datetime object
+                published_str = pubdate.strftime("%b %Y")
+            else:
+                # It's a string (ISO format like "2026-01-20T08:00:00+00:00")
+                try:
+                    from datetime import datetime
+                    if isinstance(pubdate, str):
+                        dt = datetime.fromisoformat(pubdate.replace('Z', '+00:00'))
+                        published_str = dt.strftime("%b %Y")
+                    else:
+                        published_str = str(pubdate)
+                except:
+                    published_str = str(pubdate)
+            result_lines.append(f"Published: {published_str}")
+        
+        # Pages from Calibre API
+        pages = metadata.get("pages", None)
+        if pages:
+            result_lines.append(f"Pages: {pages}")
+        
+        # Notes/Comments (comments from Calibre API)
+        notes = metadata.get("comments", "")
+        if notes:
+            result_lines.append("")
+            result_lines.append(notes)
+        
+        # Languages
+        languages = metadata.get("languages", [])
+        if isinstance(languages, list) and languages:
+            result_lines.append(f"Languages: {', '.join(languages)}")
+        
+        # Identifiers (ISBN, etc.)
+        identifiers = metadata.get("identifiers", {})
+        if identifiers:
+            id_pairs = []
+            isbn_list = []
+            for id_type, id_val in identifiers.items():
+                id_str = str(id_val)
+                if id_type == "isbn" or id_str.startswith("978") or id_str.startswith("979"):
+                    isbn_list.append(id_str)
+                else:
+                    id_pairs.append(f"{id_type}: {id_str}")
+            
+            if isbn_list:
+                result_lines.append(f"Identifiers: {', '.join(isbn_list)}")
+            if id_pairs:
+                result_lines.append(f"Identifiers: {', '.join(id_pairs)}")
+        
+        result = "\n".join(result_lines)
+        logger.info(f"get_book_metadata result: {result[:200]}...")
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error getting book metadata: {e}", exc_info=True)
+        return f"Error getting book metadata: {str(e)}"
 
 
 # =============================================================================
@@ -435,7 +658,7 @@ Common Calibre server URLs:
 
 if __name__ == "__main__":
     try:
-        log("Starting MCP server run()")
+        logger.info("Starting MCP server run()")
         mcp.run()
     except Exception as e:
-        log_fatal(f"FATAL ERROR starting MCP server: {e}")
+        logger.error(f"FATAL ERROR starting MCP server: {e}", exc_info=True)

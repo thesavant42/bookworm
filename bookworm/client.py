@@ -63,6 +63,30 @@ class CalibreClient:
         
         raise RuntimeError("No library entry found in OPDS feed")
     
+    def list_libraries_from_opds(self) -> list:
+        """
+        Fetch all available libraries from the /opds endpoint.
+        
+        Returns:
+            List of tuples (library_id, library_name)
+        """
+        response = self._client.get(f"{self.base_url}/opds")
+        
+        if response.status_code != 200:
+            raise RuntimeError(f"Failed to fetch OPDS: {response.status_code}")
+        
+        root = ET.fromstring(response.text)
+        ns = {'atom': 'http://www.w3.org/2005/Atom'}
+        
+        libraries = []
+        for entry in root.findall('.//atom:entry', ns):
+            title_elem = entry.find('atom:title', ns)
+            if title_elem is not None and title_elem.text and title_elem.text.startswith("Library:"):
+                library_id = title_elem.text.replace("Library:", "").strip()
+                libraries.append((library_id, library_id))
+        
+        return libraries
+    
     def _print_request(self, method: str, url: str, headers: Dict[str, str] = None, body: str = None) -> None:
         """Print HTTP request details."""
         if not self.debug:

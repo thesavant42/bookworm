@@ -55,8 +55,8 @@ def search_books(
             all_books.update(response["metadata"])
             offset += PAGE_SIZE
     
-    # Step 3: Apply format filter if specified
-    if format_filter:
+    # Step 3: Apply format filter if specified (NOT None)
+    if format_filter is not None and format_filter != "":
         filtered_books = {}
         for book_id, metadata in all_books.items():
             if format_filter.lower() in [f.lower() for f in metadata.get("formats", [])]:
