@@ -126,7 +126,7 @@ def download_books(
     Args:
         server_url: Calibre server URL
         book_ids: List of book IDs to download
-        library_id: Library ID (fetched from /opds if None)
+        library_id: Library ID (fetched from /ajax/library-info if None)
         output: Output path
         format: Format to download
         

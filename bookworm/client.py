@@ -1,7 +1,6 @@
 """HTTP client for Calibre API interactions."""
 
 import urllib.parse
-import xml.etree.ElementTree as ET
 from typing import Any, Dict, Optional, Tuple
 
 import httpx
@@ -16,76 +15,50 @@ class CalibreClient:
         
         Args:
             base_url: Base URL of the Calibre server (e.g., http://69.144.163.41:8080)
-            library_id: Library ID (default: "books")
+            library_id: Library ID (default: None, auto-detected from /ajax/library-info)
             debug: Enable verbose HTTP request/response logging (default: False)
         """
         self.base_url = base_url.rstrip('/')
         self.debug = debug
         self._client = httpx.Client(timeout=60.0)
         
-        # If no library_id provided, fetch from OPDS (failfast - no defaults)
+        # If no library_id provided, fetch from /ajax/library-info
         if library_id is None:
-            library_id = self.get_library_id_from_opds()
+            library_info = self.get_library_info_from_ajax()
+            library_id = library_info.get("default_library")
+            if not library_id:
+                raise RuntimeError("No default library found in library-info")
         self.library_id = library_id
     
-    def get_library_id_from_opds(self) -> str:
+    def get_library_info_from_ajax(self) -> Dict[str, Any]:
         """
-        Fetch the library ID from the /opds endpoint.
+        Fetch library information from /ajax/library-info endpoint.
         
         Returns:
-            Library ID string (e.g., "Calibre_Library")
+            Dict with 'default_library' and 'library_map' keys
             
         Raises:
-            RuntimeError: If OPDS fetch fails or library ID not found
+            RuntimeError: If request fails or response is invalid
         """
-        response = self._client.get(f"{self.base_url}/opds")
+        response = self._client.get(f"{self.base_url}/ajax/library-info")
         
         if response.status_code != 200:
-            raise RuntimeError(f"Failed to fetch OPDS: {response.status_code} - {response.text[:200]}")
+            raise RuntimeError(f"Failed to fetch library info: {response.status_code} - {response.text[:200]}")
         
-        # Parse XML to find the library ID
-        root = ET.fromstring(response.text)
-        
-        # Find the library entry
-        ns = {'atom': 'http://www.w3.org/2005/Atom'}
-        for entry in root.findall('.//atom:entry', ns):
-            title_elem = entry.find('atom:title', ns)
-            
-            if title_elem is not None:
-                title = title_elem.text
-                
-                if title.startswith("Library:"):
-                    # Extract library ID from "Library: <id>" format
-                    library_id = title.replace("Library:", "").strip()
-                    if not library_id:
-                        raise RuntimeError("Empty library ID from OPDS")
-                    return library_id
-        
-        raise RuntimeError("No library entry found in OPDS feed")
+        import json
+        return json.loads(response.text)
     
-    def list_libraries_from_opds(self) -> list:
+    def list_libraries(self) -> list:
         """
-        Fetch all available libraries from the /opds endpoint.
+        Fetch all available libraries from /ajax/library-info endpoint.
         
         Returns:
             List of tuples (library_id, library_name)
         """
-        response = self._client.get(f"{self.base_url}/opds")
+        library_info = self.get_library_info_from_ajax()
+        library_map = library_info.get("library_map", {})
         
-        if response.status_code != 200:
-            raise RuntimeError(f"Failed to fetch OPDS: {response.status_code}")
-        
-        root = ET.fromstring(response.text)
-        ns = {'atom': 'http://www.w3.org/2005/Atom'}
-        
-        libraries = []
-        for entry in root.findall('.//atom:entry', ns):
-            title_elem = entry.find('atom:title', ns)
-            if title_elem is not None and title_elem.text and title_elem.text.startswith("Library:"):
-                library_id = title_elem.text.replace("Library:", "").strip()
-                libraries.append((library_id, library_id))
-        
-        return libraries
+        return [(lib_id, lib_name) for lib_id, lib_name in library_map.items()]
     
     def _print_request(self, method: str, url: str, headers: Dict[str, str] = None, body: str = None) -> None:
         """Print HTTP request details."""

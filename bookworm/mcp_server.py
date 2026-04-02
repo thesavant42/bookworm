@@ -89,7 +89,6 @@ async def search_books(
                 logger.debug(f"Trying server: {server_url}")
                 try:
                     client = CalibreClient(server_url, library)
-                    client.get_books_init("test")
                     logger.info(f"Connected to server: {server_url}")
                     break
                 except Exception as e:
@@ -173,16 +172,13 @@ async def download_books(
                 logger.debug(f"Trying server for download: {server_url}")
                 try:
                     client = CalibreClient(server_url, library)
-                    # Try with the specified library ID
-                    client.get_books_init("test")
                     logger.info(f"Connected to server for download: {server_url}")
                     break
                 except Exception as e:
                     logger.debug(f"Server {server_url} failed for download: {e}")
                     # Try default library if specified library fails
                     try:
-                        client = CalibreClient(server_url, None)  # Let client auto-detect library from OPDS
-                        client.get_books_init("test")
+                        client = CalibreClient(server_url, None)  # Let client auto-detect library from /ajax/library-info
                         library = client.library_id
                         logger.info(f"Auto-detected library '{library}' from server {server_url}")
                         break
@@ -303,46 +299,36 @@ def list_libraries(server: Optional[str] = None) -> str:
     Returns:
         Formatted list of available libraries
     """
+    import json
+    import urllib.request
+    
+    # Get server URL
+    if server:
+        server_url = server
+    else:
+        servers = config.load_servers()
+        if not servers:
+            logger.warning("No servers configured")
+            return "Error: No servers configured. Use add_server to add servers."
+        server_url = servers[0]
+    
     try:
-        # Get client
-        if server:
-            logger.debug(f"Using provided server: {server}")
-            client = CalibreClient(server, None)
-        else:
-            servers = config.load_servers()
-            if not servers:
-                logger.warning("No servers configured")
-                ctx.info("No servers configured")
-                return "Error: No servers configured. Use add_server to add servers."
+        # Direct HTTP request to /ajax/library-info endpoint
+        with urllib.request.urlopen(f"{server_url.rstrip('/')}/ajax/library-info", timeout=30) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            library_map = data.get("library_map", {})
             
-            client = None
-            for server_url in servers:
-                logger.debug(f"Trying server: {server_url}")
-                try:
-                    client = CalibreClient(server_url, None)
-                    logger.info(f"Connected to server: {server_url}")
-                    break
-                except Exception as e:
-                    logger.debug(f"Server {server_url} failed: {e}")
-                    continue
-            
-            if not client:
-                return "Error: All configured servers failed to respond"
-        
-        # Get libraries
-        libraries = client.list_libraries_from_opds()
-        
-        if libraries:
-            result_lines = [f"Available libraries on {client.base_url}:\n"]
-            for lib_id, lib_name in libraries:
-                result_lines.append(f"  - {lib_name} (ID: {lib_id})")
-            result = "\n".join(result_lines)
-            logger.info(f"list_libraries result: {result[:200]}...")
-            return result
-        else:
-            logger.info("list_libraries result: No libraries found")
-            return "No libraries found"
-            
+            if library_map:
+                result_lines = [f"Available libraries on {server_url}:\n"]
+                for lib_id, lib_name in library_map.items():
+                    result_lines.append(f"  - {lib_name} (ID: {lib_id})")
+                result = "\n".join(result_lines)
+                logger.info(f"list_libraries result: {result[:200]}...")
+                return result
+            else:
+                logger.info("list_libraries result: No libraries found")
+                return "No libraries found"
+                
     except Exception as e:
         logger.error(f"Error listing libraries: {e}", exc_info=True)
         return f"Error listing libraries: {str(e)}"
@@ -383,15 +369,13 @@ async def get_book_metadata(
                 logger.debug(f"Trying server: {server_url}")
                 try:
                     client = CalibreClient(server_url, library)
-                    client.get_books_init("test")
                     logger.info(f"Connected to server: {server_url}")
                     break
                 except Exception as e:
                     logger.debug(f"Server {server_url} failed: {e}")
                     # Try default library if specified library fails
                     try:
-                        client = CalibreClient(server_url, None)  # Let client auto-detect library from OPDS
-                        client.get_books_init("test")
+                        client = CalibreClient(server_url, None)  # Let client auto-detect library from /ajax/library-info
                         library = client.library_id
                         logger.info(f"Auto-detected library '{library}' from server {server_url}")
                         break
@@ -553,7 +537,7 @@ def get_book_metadata(book_id: str) -> str:
         
         for server_url in servers:
             try:
-                # Auto-detect library from /opds
+                # Auto-detect library from /ajax/library-info
                 client = CalibreClient(server_url, None)
                 metadata = client.get_book_metadata(int(book_id))
                 logger.info(f"Got metadata for book {book_id} from {server_url}, library={client.library_id}")

@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **format_filter validation error**: Removed `format_filter` parameter from MCP `search_books` tool signature to eliminate "format_filter cannot be None" validation errors. The parameter was causing MCP tool schema conflicts when omitted by callers.
 
 ### Changed
+- **Library enumeration endpoint**: Replaced OPDS-based library detection with cleaner `/ajax/library-info` JSON endpoint
+  - Removed XML parsing dependency (`xml.etree.ElementTree`)
+  - Removed `get_library_id_from_opds()` and `list_libraries_from_opds()` methods
+  - Added `get_library_info_from_ajax()` method for library info retrieval
+  - Added `list_libraries()` method using ajax endpoint
+  - More reliable: dedicated API endpoint instead of parsing Atom feeds
 - **Metadata display format**: Updated `get_book_metadata` MCP tool to properly handle Calibre API field names:
   - Changed `author` to `authors` (list format)
   - Changed `format` to `formats` (list format)
